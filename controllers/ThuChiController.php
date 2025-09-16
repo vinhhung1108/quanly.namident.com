@@ -64,22 +64,22 @@ class ThuChiController extends Controller
     public function actionIndex()
     {
         $searchModel = new ThuChiSearch();
-		$thongkeModel = new ThuChiThongke();
-		$loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');
-        //$dataProvider = $searchModel->search(Yii::$app->request->queryParams);
-		$dataProvider = $thongkeModel->thongke(Yii::$app->request->queryParams);
-				
-		if($thongkeModel->load(Yii::$app->request->queryParams)){
-			$thu_kh = $this->thu_kh($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc);
-			$thu_khac = $this->thu_khac($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc);
-			$tong_chi = $thongkeModel->tongchi(Yii::$app->request->queryParams); //$this->tong_chi($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc, $thongkeModel->loai);
-			$con_lai = $this->con_lai($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc);
-		}else{
-			$thu_kh = $this->thu_kh('','');
-			$thu_khac = $this->thu_khac('','');
-			$tong_chi = $thongkeModel->tongchi([]); //$this->tong_chi('','','');
-			$con_lai = $this->con_lai('','');
-		}
+        $thongkeModel = new ThuChiThongke();
+        $loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');
+            //$dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+        $dataProvider = $thongkeModel->thongke(Yii::$app->request->queryParams);
+            
+        if($thongkeModel->load(Yii::$app->request->queryParams)){
+          $thu_kh = $this->thu_kh($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc);
+          $thu_khac = $this->thu_khac($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc);
+          $tong_chi = $thongkeModel->tongchi(Yii::$app->request->queryParams); //$this->tong_chi($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc, $thongkeModel->loai);
+          $con_lai = $this->con_lai($thongkeModel->ngay_bat_dau,$thongkeModel->ngay_ket_thuc);
+        }else{
+          $thu_kh = $this->thu_kh('','');
+          $thu_khac = $this->thu_khac('','');
+          $tong_chi = $thongkeModel->tongchi([]); //$this->tong_chi('','','');
+          $con_lai = $this->con_lai('','');
+        }
 
         return $this->render('index', [
             'searchModel' => $searchModel,
@@ -113,27 +113,43 @@ class ThuChiController extends Controller
      */
     public function actionCreate()
     {
-        $model = new ThuChi();
-		    $model->loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');		
-	  
-        if ($model->load(Yii::$app->request->post()) && $model->validate())
-        {
-          
-          $model->so_tien = $this->tien_text($model->so_tien_t);						
-          $this->them_hinh_anh($model);
-          if($model->ngay_thu == null){
-            $model->ngay_thu = date('Y-m-d');
-          }
-          
-          if($model->save()){
-            return $this->redirect(['view', 'id' => $model->id]);						
-          }
+        // Nếu là GET: user vừa bấm Back quay lại create? → đẩy sang index
+        if (Yii::$app->request->isGet) {
+            $flag = Yii::$app->session->get('thu-chi.created.flag');
+            if (is_array($flag) && isset($flag['expires']) && $flag['expires'] >= time()) {
+                Yii::$app->session->remove('thu-chi.created.flag'); // dùng 1 lần rồi xóa
+                return $this->redirect(['index']);
+            }
         }
 
-        return $this->render('create', [
-            'model' => $model,
-        ]);
+        $model = new ThuChi();
+        $model->loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id', 'loai_thu_chi');
+
+        if ($model->load(Yii::$app->request->post())) {
+
+            // Chuẩn hóa dữ liệu TRƯỚC khi save lần đầu (tránh phải save 2 lần)
+            $model->so_tien = $this->tien_text($model->so_tien_t);
+            if ($model->ngay_thu === null) {
+                $model->ngay_thu = date('Y-m-d');
+            }
+
+            if ($model->save()) {
+                // xử lý ảnh (hàm của bạn tự save lại; có thể dùng save(false) nếu cần)
+                $this->them_hinh_anh($model);
+
+                // Đặt flag 2 phút: nếu user Back về /create trong thời gian này → đẩy sang index
+                Yii::$app->session->set('thu-chi.created.flag', [
+                    'expires' => time() + 120,
+                ]);
+
+                // Giữ nguyên mong muốn: tạo xong → chuyển sang view
+                return $this->redirect(['view', 'id' => $model->id]);
+            }
+        }
+
+        return $this->render('create', ['model' => $model]);
     }
+
 
     /**
      * Updates an existing ThuChi model.
@@ -145,18 +161,18 @@ class ThuChiController extends Controller
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
-		$model->so_tien_t = $model->so_tien;
-		$model->loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');	
+        $model->so_tien_t = $model->so_tien;
+        $model->loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');	
 		
         if ($model->load(Yii::$app->request->post()) && $model->save()) 
-		{							
-			
-			$model->so_tien = $this->tien_text($model->so_tien_t);			
-			$this->them_hinh_anh($model);
-			
-			if($model->save()){
-				return $this->redirect(['view', 'id' => $model->id]);
-			}
+        {							
+          
+          $model->so_tien = $this->tien_text($model->so_tien_t);			
+          $this->them_hinh_anh($model);
+          
+          if($model->save()){
+            return $this->redirect(['view', 'id' => $model->id]);
+          }
 			
         }
 
