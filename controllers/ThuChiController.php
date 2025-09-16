@@ -114,20 +114,20 @@ class ThuChiController extends Controller
     public function actionCreate()
     {
         $model = new ThuChi();
-		$model->loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');		
+		    $model->loaithuchi = ArrayHelper::map(LoaiThuChi::find()->all(), 'id','loai_thu_chi');		
 	  
-        if ($model->load(Yii::$app->request->post()) && $model->save())
-		{
-			
-			$model->so_tien = $this->tien_text($model->so_tien_t);						
-			$this->them_hinh_anh($model);
-			if($model->ngay_thu == null){
-				$model->ngay_thu = date('Y-m-d');
-			}
-			
-			if($model->save()){
-				return $this->redirect(['view', 'id' => $model->id]);						
-			}
+        if ($model->load(Yii::$app->request->post()) && $model->validate())
+        {
+          
+          $model->so_tien = $this->tien_text($model->so_tien_t);						
+          $this->them_hinh_anh($model);
+          if($model->ngay_thu == null){
+            $model->ngay_thu = date('Y-m-d');
+          }
+          
+          if($model->save()){
+            return $this->redirect(['view', 'id' => $model->id]);						
+          }
         }
 
         return $this->render('create', [
