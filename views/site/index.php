@@ -12,7 +12,7 @@ $this->title = 'Quản lý nha khoa';
          QUẢN LÝ NHA KHOA
         </h1>       
 
-        <p><a class="btn btn-lg btn-success" href="/khach-hang/index">Quản lý khách hàng</a></p>
+        <p><a class="btn btn-lg btn-success" href="/my-khach-hang/index">Quản lý khách hàng</a></p>
 		<p><a class="btn btn-lg btn-info" href="/thu-chi/index">Quản lý Thu Chi</a></p>
     </div>
 

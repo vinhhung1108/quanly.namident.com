@@ -53,4 +53,10 @@ class NhomKhachHang extends \yii\db\ActiveRecord
     {
         return new NhomKhachHangQuery(get_called_class());
     }
+
+    public function getKhachHangs()
+    {
+        return $this->hasMany(MyKhachHang::class, ['id' => 'kh_id'])
+            ->viaTable('kh_nhom_map', ['nhom_id' => 'id']);
+    }
 }

@@ -99,135 +99,131 @@ class KhachHangController extends Controller
      * If creation is successful, the browser will be redirected to the 'view' page.
      * @return mixed
      */
-    public function actionCreate()
-    {
-        $model = new KhachHang();
-		$modelsDieuTri = [new DieuTri];
-		$modelBacSi = new BacSi;
-		$bac_si = ArrayHelper::map(BacSi::find()->all(), 'ho_ten','ho_ten');
-		
-    $bac_si = array_map(function($v){
-    return (preg_match('/Ã|Â/', $v))
-        ? mb_convert_encoding($v, 'UTF-8', 'Windows-1252,ISO-8859-1')
-        : $v;
-}, $bac_si);
+public function actionCreate()
+{
+  $model = new KhachHang();
+  $modelsDieuTri = [new DieuTri];
+  $modelBacSi = new BacSi;
+  
+  $bac_si = ArrayHelper::map(BacSi::find()->all(), 'ho_ten','ho_ten');
 
-        if ($model->load(Yii::$app->request->post()) && $model->save())
-		{
-			$modelsDieuTri = Model::createMultiple(DieuTri::classname());
-            Model::loadMultiple($modelsDieuTri, Yii::$app->request->post());
-			
-			$model->upload = UploadedFile::getInstances($model, 'upload');
-			
-			
-            // validate all models
-            $valid = $model->validate();
-            $valid = Model::validateMultiple($modelsDieuTri) && $valid;
-            
-			$tong_phi = 0;
-			$tam_thu = 0;
-			$ngay_dieu_tri = null;
-			$tam_thu_last = 0;
-			//$check_tam_thu_last = true;
-			foreach ($modelsDieuTri as $key => $modelDieuTri)
-			{
-				
-				if(($modelDieuTri->phi_t == null) || ($modelDieuTri->phi_t == '')){$phit = 0;
-				}else{
-					$phi = explode(',',$modelDieuTri->phi_t);
-					$phit = implode($phi);					
-				}
-				$modelDieuTri->phi = intval($phit);
-				
-				if(($modelDieuTri->tam_thu_t == null) || ($modelDieuTri->tam_thu_t == '')){
-                    $phitamt= 0;
-                    //$tam_thu_last = 0;
-				}else{
-					$phitam = explode(',',$modelDieuTri->tam_thu_t);				
-					$phitamt = implode($phitam);
-				}
-				$modelDieuTri->tam_thu = intval($phitamt);
+  $bac_si = array_map(function($v){
+      return (preg_match('/Ã|Â/', $v))
+          ? mb_convert_encoding($v, 'UTF-8', 'Windows-1252,ISO-8859-1')
+          : $v;
+  }, $bac_si);
 
-				//if($check_tam_thu_last) {$tam_thu_last = $modelDieuTri->tam_thu; $check_tam_thu_last = !$check_tam_thu_last;}
-
-				$tong_phi = intval($modelDieuTri->phi) + $tong_phi;
-				$tam_thu = intval($modelDieuTri->tam_thu) + $tam_thu;
-
-                if($modelDieuTri->ngay_dieu_tri > $ngay_dieu_tri){
-                    $ngay_dieu_tri = $modelDieuTri->ngay_dieu_tri;
-                    $tam_thu_last = $modelDieuTri->tam_thu;
-                }
-			}
-			  if ($ngay_dieu_tri === '' || $ngay_dieu_tri === '0') {
-              $ngay_dieu_tri = null;
-          }
-			$model->ngay_dieu_tri = $ngay_dieu_tri;
-			$con_lai = $tong_phi - $tam_thu;
-			$model->tong_phi = $tong_phi;
-			$model->tam_thu = $tam_thu;
-			$model->con_lai = $con_lai;
-			$model->tam_thu_last = $tam_thu_last;
-			
-			$model->ho_ten = mb_strtoupper($model->ho_ten);
-			$model->gio = date('H:i');
-            if ($valid) {
-                $uppath = 'uploads';
-                if(!file_exists($uppath) ){mkdir($uppath); }
-                $uppath = 'uploads/posts';
-                if(!file_exists($uppath)) {mkdir($uppath); }	
-				if($model->upload <> null){
-                    $uppath = 'uploads/posts/'.$model->id;
-                    if(!file_exists($uppath)){mkdir($uppath);}
-                }
-                $files_exists = glob($uppath . '/*');
-                if(count($files_exists) < 6) { // Cho phep tai len neu da co it hon 6 file
-                    foreach ($model->upload as $f_key => $file) {
-                        if($f_key + count($files_exists) > 5) { break; }  //Neu nhieu hon 6 file thi break
-                        $filePath = $uppath . '/' . uniqid() . '.' . $file->extension;
-                        Yii::$app->imageProcessor->save(['file' => $file->tempName], $filePath, 'galleryImage');
-                        if(file_exists($filePath)) {
-                            if ($model->hinh_anh <> null) {
-                                $model->hinh_anh = $model->hinh_anh . ":". $filePath;
-                            }else {$model->hinh_anh = $filePath; }
-                        }					
-                    }
-                }
-				
-				if($model->videos <> null){
-					if ($model->video <> null) {
-						$model->video = $model->video . "__" . $model->videos;
-					}else {$model->video = $model->videos; }
-				}
+  if ($model->load(Yii::$app->request->post()) && $model->save())
+  {
+    $modelsDieuTri = Model::createMultiple(DieuTri::classname());
+    Model::loadMultiple($modelsDieuTri, Yii::$app->request->post());
+    $model->upload = UploadedFile::getInstances($model, 'upload');
+    // validate all models
+    $valid = $model->validate();
+    $valid = Model::validateMultiple($modelsDieuTri) && $valid;
         
-                $transaction = \Yii::$app->db->beginTransaction();
-                try {
-                    if ($flag = $model->save(false)) {
-                        foreach ($modelsDieuTri as $modelDieuTri) {
-                            $modelDieuTri->id_kh = $model->id;													
-                            if (! ($flag = $modelDieuTri->save(false))) {								
-								$transaction->rollBack();								
-                                break;
-                            }
-                        }
-                    }
-                    if ($flag) {
-                        $transaction->commit();
-                        return $this->redirect(['view', 'id' => $model->id]);
-                    }
-                } catch (Exception $e) {
-                    $transaction->rollBack();
-                }
-            }
-			
-           // return $this->redirect(['view', 'id' => $model->id]);
-        }
+    $tong_phi = 0;
+    $tam_thu = 0;
+    $ngay_dieu_tri = null;
+    $tam_thu_last = 0;
+    //$check_tam_thu_last = true;
+    foreach ($modelsDieuTri as $key => $modelDieuTri)
+    {
+      if(($modelDieuTri->phi_t == null) || ($modelDieuTri->phi_t == '')){
+        $phit = 0;
+      }else{
+        $phi = explode(',',$modelDieuTri->phi_t);
+        $phit = implode($phi);					
+      }
+      $modelDieuTri->phi = intval($phit);
+    
+      if(($modelDieuTri->tam_thu_t == null) || ($modelDieuTri->tam_thu_t == '')){
+        $phitamt= 0;
+                //$tam_thu_last = 0;
+      }else{
+      $phitam = explode(',',$modelDieuTri->tam_thu_t);				
+      $phitamt = implode($phitam);
+      }
+      $modelDieuTri->tam_thu = intval($phitamt);
+      $tong_phi = intval($modelDieuTri->phi) + $tong_phi;
+      $tam_thu = intval($modelDieuTri->tam_thu) + $tam_thu;
 
-        return $this->render('create', [
-            'model' => $model,
-			'modelsDieuTri' => (empty($modelsDieuTri)) ? [new DieuTri] : $modelsDieuTri,
-			'bac_si' => $bac_si
-        ]);
+      if($modelDieuTri->ngay_dieu_tri > $ngay_dieu_tri){
+          $ngay_dieu_tri = $modelDieuTri->ngay_dieu_tri;
+          $tam_thu_last = $modelDieuTri->tam_thu;
+      }
     }
+    if ($ngay_dieu_tri === '' || $ngay_dieu_tri === '0') {
+        $ngay_dieu_tri = null;
+    }
+    $model->ngay_dieu_tri = $ngay_dieu_tri;
+    $con_lai = $tong_phi - $tam_thu;
+    $model->tong_phi = $tong_phi;
+    $model->tam_thu = $tam_thu;
+    $model->con_lai = $con_lai;
+    $model->tam_thu_last = $tam_thu_last;
+  
+    $model->ho_ten = mb_strtoupper($model->ho_ten);
+    $model->gio = date('H:i');
+      
+    if ($valid) 
+    {
+      $uppath = 'uploads';
+      if(!file_exists($uppath) ){mkdir($uppath); }
+      $uppath = 'uploads/posts';
+      if(!file_exists($uppath)) {mkdir($uppath); }	
+      if($model->upload <> null){
+        $uppath = 'uploads/posts/'.$model->id;
+        if(!file_exists($uppath)){mkdir($uppath);}
+      }
+      $files_exists = glob($uppath . '/*');
+      if(count($files_exists) < 6) { // Cho phep tai len neu da co it hon 6 file
+        foreach ($model->upload as $f_key => $file) {
+          if($f_key + count($files_exists) > 5) { break; }  //Neu nhieu hon 6 file thi break
+          $filePath = $uppath . '/' . uniqid() . '.' . $file->extension;
+          Yii::$app->imageProcessor->save(['file' => $file->tempName], $filePath, 'galleryImage');
+          if(file_exists($filePath)) {
+            if ($model->hinh_anh <> null) {
+                $model->hinh_anh = $model->hinh_anh . ":". $filePath;
+            }else {$model->hinh_anh = $filePath; }
+          }					
+        }
+      }
+    
+      if($model->videos <> null){
+        if ($model->video <> null) {
+          $model->video = $model->video . "__" . $model->videos;
+        }else {$model->video = $model->videos; }
+      }
+      $transaction = \Yii::$app->db->beginTransaction();
+      try {
+          if ($flag = $model->save(false)) {
+              foreach ($modelsDieuTri as $modelDieuTri) {
+                  $modelDieuTri->id_kh = $model->id;													
+                  if (! ($flag = $modelDieuTri->save(false))) {								
+      $transaction->rollBack();								
+                      break;
+                  }
+              }
+          }
+          if ($flag) {
+              $transaction->commit();
+              return $this->redirect(['view', 'id' => $model->id]);
+          }
+      } catch (Exception $e) {
+          $transaction->rollBack();
+      }
+    }
+  
+        // return $this->redirect(['view', 'id' => $model->id]);
+  }
+
+  return $this->render('create', [
+    'model' => $model,
+    'modelsDieuTri' => (empty($modelsDieuTri)) ? [new DieuTri] : $modelsDieuTri,
+    'bac_si' => $bac_si
+  ]);
+}
 
     /**
      * Updates an existing KhachHang model.

@@ -5,9 +5,9 @@ use yii\helpers\Html;
 /* @var $this yii\web\View */
 /* @var $model app\models\BacSi */
 
-$this->title = 'Update Bac Si: ' . $model->id;
+$this->title = 'Cập nhật thông tin';
 $this->params['breadcrumbs'][] = ['label' => 'Danh sách bác sĩ', 'url' => ['index']];
-$this->params['breadcrumbs'][] = ['label' => $model->id, 'url' => ['view', 'id' => $model->id]];
+$this->params['breadcrumbs'][] = ['label' => $model->ho_ten, 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Update';
 ?>
 <div class="bac-si-update">

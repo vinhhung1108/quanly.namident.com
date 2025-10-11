@@ -11,6 +11,7 @@ use yii\widgets\Breadcrumbs;
 use app\assets\AppAsset;
 use app\models\User;
 AppAsset::register($this);
+$this->registerCss('@media print {.no-print{display:none!important;}}');
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
@@ -36,10 +37,11 @@ AppAsset::register($this);
         ],
     ]);
 	$items=[];
-	$items[]= ['label' => 'Home', 'url' => ['/site/index']];
-	if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Danh sách điều trị', 'url' => ['/dieu-tri/index']];}
-	if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Quản lý Khách hàng', 'url' => ['/khach-hang/index']];}
-	if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Thu Chi',
+	// $items[]= ['label' => 'Home', 'url' => ['/site/index']];
+	// if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Danh sách điều trị', 'url' => ['/my-dieu-tri/index']];}
+	if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Quản lý Khách hàng', 'url' => ['/my-khach-hang/index']];}
+	if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Quản lý Lịch hẹn', 'url' => ['/lich-hen']];}
+  if(!Yii::$app->user->isGuest){$items[]= ['label' => 'Thu Chi',
 				'items'=>[
 					['label' => 'Quản lý Thu Chi', 'url' => ['/thu-chi']],
 					['label' => 'Loại Thu Chi', 'url' => ['/loai-thu-chi']],
@@ -52,6 +54,8 @@ AppAsset::register($this);
         'items'=>[
           ['label'=>'Thông tin nha khoa', 'url'=>'/nha-khoa/view?id=1'],
           ['label'=>'Quản lý bác sĩ', 'url'=>'/bac-si/index'],
+          ['label'=>'Quản lý dịch vụ', 'url'=>'/dich-vu/index'],
+          ['label'=>'Nhóm khách hàng', 'url'=>'/nhom-khach-hang/index'],
         ],
 				//'visible'=> Yii::$app->user->can('admin'),				
 			];}
@@ -113,6 +117,7 @@ AppAsset::register($this);
 
     <div class="container-fluid">
         <?= Breadcrumbs::widget([
+            'options' => ['class' => 'breadcrumb no-print'],
             'links' => isset($this->params['breadcrumbs']) ? $this->params['breadcrumbs'] : [],
         ]) ?>
         <?= Alert::widget() ?>

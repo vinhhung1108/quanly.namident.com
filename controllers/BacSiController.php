@@ -1,45 +1,34 @@
 <?php
-
 namespace app\controllers;
 
 use Yii;
-use app\models\BacSi;
-use app\models\BacSiSearch;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
-
 use yii\filters\AccessControl;
+use yii\data\ActiveDataProvider;
+use app\models\BacSi;
+use app\models\BacSiSearch;
+use app\models\MyDieuTri;
+use app\models\BacSiHoaHong;
 
-/**
- * BacSiController implements the CRUD actions for BacSi model.
- */
 class BacSiController extends Controller
 {
-    /**
-     * {@inheritdoc}
-     */
     public function behaviors()
     {
         return [
-			'access' => [
-                'class' => AccessControl::className(),
-                'only' => ['index','view','create','update','delete'],
-                'rules' => [                   
-					[
-						'allow' => false,
-						'controllers' => ['index','view','create','update','delete'],
-						'roles' => ['?'],
-					],
-					[
-						'allow' => true,
-						'actions' => ['index','view','create','update','delete'],
-						'roles' => ['admin','author'],
-					],
+            'access' => [
+                'class'  => AccessControl::class,
+                'only'   => ['index','view','create','update','delete'],
+                'rules'  => [
+                    [
+                        'allow' => true,
+                        'roles' => ['admin','author'],
+                    ],
                 ],
             ],
             'verbs' => [
-                'class' => VerbFilter::className(),
+                'class' => VerbFilter::class,
                 'actions' => [
                     'delete' => ['POST'],
                 ],
@@ -47,99 +36,138 @@ class BacSiController extends Controller
         ];
     }
 
-    /**
-     * Lists all BacSi models.
-     * @return mixed
-     */
+    /** Danh sách */
     public function actionIndex()
     {
-        $searchModel = new BacSiSearch();
-        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+        if (class_exists(BacSiSearch::class)) {
+            $searchModel  = new BacSiSearch();
+            $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+            return $this->render('index', compact('dataProvider','searchModel'));
+        }
 
-        return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+        $dataProvider = new ActiveDataProvider([
+            'query' => BacSi::find()->orderBy(['ho_ten'=>SORT_ASC]),
+            'pagination' => ['pageSize' => 20],
         ]);
+        return $this->render('index', compact('dataProvider'));
     }
 
     /**
-     * Displays a single BacSi model.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
+     * View + TÍNH LƯƠNG (theo tạm thu từng DV)
+     * GET ?from=YYYY-MM-DD&to=YYYY-MM-DD (mặc định: tháng hiện tại)
      */
     public function actionView($id)
     {
+        $bs = $this->findModel($id);
+
+        // Khoảng thời gian
+        $from = Yii::$app->request->get('from');
+        $to   = Yii::$app->request->get('to');
+        if (!$from || !$to) {
+            $first = new \DateTime('first day of this month');
+            $last  = new \DateTime('last day of this month');
+            $from = $from ?: $first->format('Y-m-d');
+            $to   = $to   ?: $last->format('Y-m-d');
+        }
+
+        // Tính lương = Σ(tam_thu_dv * % hoa hồng áp cho DV)
+        $calc = $bs->tinhLuongTheoDichVu($from, $to, true, true);
+
+        // Danh sách điều trị liên quan tới bác sĩ trong kỳ
+        $dtIdsMap = [];
+        foreach (($calc['items'] ?? []) as $item) {
+            $dtId = (int)($item['dieu_tri_id'] ?? 0);
+            if ($dtId > 0) $dtIdsMap[$dtId] = true;
+        }
+        $dtIds = array_keys($dtIdsMap);
+
+        $rowsQuery = MyDieuTri::find()
+            ->alias('dt')
+            ->andWhere(['between', 'dt.ngay_dieu_tri', $from, $to]);
+
+        $or = ['or', ['dt.bs_id' => (int)$bs->id]];
+        if (!empty($dtIds)) $or[] = ['dt.id' => $dtIds];
+
+        $rowsQuery->andWhere($or)
+                  ->with(['dvItems.dichVu'])
+                  ->orderBy(['dt.ngay_dieu_tri' => SORT_DESC, 'dt.id' => SORT_DESC]);
+
+        $rowsProvider = new ActiveDataProvider([
+            'query' => $rowsQuery,
+            'pagination' => ['pageSize' => 20],
+        ]);
+
+        $hoaHongProvider = new ActiveDataProvider([
+            'query' => BacSiHoaHong::find()
+                ->where(['bs_id' => (int)$bs->id])
+                ->with('dichVu')
+                ->orderBy(['dv_id' => SORT_ASC]),
+            'pagination' => ['pageSize' => 50],
+        ]);
+
+        $printMode = (bool)Yii::$app->request->get('print', false);
+        if ($printMode) {
+            $rowsProvider->pagination = false;
+            $rowsProvider->setSort(false);
+        }
+
         return $this->render('view', [
-            'model' => $this->findModel($id),
+            'model'            => $bs,
+            'from'             => $from,
+            'to'               => $to,
+
+            // Tổng hợp theo tạm thu
+            'sumTamThu'        => (int)$calc['tong_tam_thu'],
+            'luongCoDinh'      => (int)$calc['luong_co_dinh'],
+            'tyLe'             => null, // mỗi DV 1 tỷ lệ khác nhau
+            'luongKinhDoanh'   => (int)$calc['luong_kinh_doanh'],
+            'tongLuong'        => (int)$calc['tong_luong'],
+
+            'rowsProvider'     => $rowsProvider,
+            'hoaHongProvider'  => $hoaHongProvider,
+
+            // Không dùng tổng thành tiền nữa (đã chuyển sang tạm thu theo DV)
+            'tongThanhTienDv'  => null,
+
+            'print'            => $printMode,
         ]);
     }
 
-    /**
-     * Creates a new BacSi model.
-     * If creation is successful, the browser will be redirected to the 'view' page.
-     * @return mixed
-     */
+    /** Tạo */
     public function actionCreate()
     {
         $model = new BacSi();
-
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+            Yii::$app->session->setFlash('success','Đã thêm bác sĩ.');
+            return $this->redirect(['view','id'=>$model->id]);
         }
-
-        return $this->render('create', [
-            'model' => $model,
-        ]);
+        return $this->render('create', compact('model'));
     }
 
-    /**
-     * Updates an existing BacSi model.
-     * If update is successful, the browser will be redirected to the 'view' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
+    /** Sửa */
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
-
         if ($model->load(Yii::$app->request->post()) && $model->save()) {
-            return $this->redirect(['view', 'id' => $model->id]);
+            Yii::$app->session->setFlash('success','Đã cập nhật.');
+            return $this->redirect(['view','id'=>$model->id]);
         }
-
-        return $this->render('update', [
-            'model' => $model,
-        ]);
+        return $this->render('update', compact('model'));
     }
 
-    /**
-     * Deletes an existing BacSi model.
-     * If deletion is successful, the browser will be redirected to the 'index' page.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
+    /** Xoá */
     public function actionDelete($id)
     {
         $this->findModel($id)->delete();
-
+        Yii::$app->session->setFlash('success','Đã xoá.');
         return $this->redirect(['index']);
     }
 
-    /**
-     * Finds the BacSi model based on its primary key value.
-     * If the model is not found, a 404 HTTP exception will be thrown.
-     * @param integer $id
-     * @return BacSi the loaded model
-     * @throws NotFoundHttpException if the model cannot be found
-     */
-    protected function findModel($id)
+    /** Helper */
+    protected function findModel($id): BacSi
     {
-        if (($model = BacSi::findOne($id)) !== null) {
-            return $model;
-        }
-
-        throw new NotFoundHttpException('The requested page does not exist.');
+        $m = BacSi::findOne($id);
+        if (!$m) throw new NotFoundHttpException('Không tìm thấy bác sĩ.');
+        return $m;
     }
 }

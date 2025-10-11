@@ -92,6 +92,7 @@ class DieuTri extends \yii\db\ActiveRecord
         'phi_t' => 'Phí điều trị',
         'tam_thu_t' => 'Tạm thu',
         'hinh_thuc_thanh_toan' => 'Hình thức TT',
+        'gio' => 'Giờ',
     ];
     foreach ($labels as $k => $v) {
         $labels[$k] = $this->demojibake($v);
@@ -102,10 +103,7 @@ class DieuTri extends \yii\db\ActiveRecord
     /**
      * @return \yii\db\ActiveQuery
      */
-    public function getKhach_hang()
-    {
-        return $this->hasOne(KhachHang::className(), ['id' => 'id_kh']);
-    }
+ 
 	
 	public function ten_kh()
 	{
@@ -154,4 +152,14 @@ class DieuTri extends \yii\db\ActiveRecord
 
         return $models;
     }
+
+   public function getImages()
+    {
+        return $this->hasMany(\app\models\DieuTriImage::class, ['dieu_tri_id' => 'id'])->orderBy(['id'=>SORT_DESC]);
+    }
+    public function getKhach_hang()
+    {
+        return $this->hasOne(\app\models\KhachHang::class, ['id' => 'id_kh']);
+    }
+
 }

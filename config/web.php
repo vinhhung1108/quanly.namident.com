@@ -14,16 +14,22 @@ $config = [
         '@npm'   => '@vendor/npm-asset',
     ],	
     'charset'  => 'UTF-8',
-'language' => 'vi-VN',
+    'language' => 'vi-VN',
     'components' => [
           'response' => ['charset' => 'UTF-8'],
-			'formatter' => [
-			'class' => 'yii\i18n\Formatter',
-			'dateFormat' => 'dd/mm/yyyy',
-			'datetimeFormat' => 'php:d/m/Y H:i:s',
-			'timeFormat' => 'php:H:i:s',
+          'formatter' => [
+            'class' => yii\i18n\Formatter::class,
+            'dateFormat' => 'php:d/m/Y',
+            'datetimeFormat' => 'php:d/m/Y H:i:s',
+            'timeFormat' => 'php:H:i:s',
             'thousandSeparator' => ',',
-		],
+            'decimalSeparator' => '.',
+            'currencyCode' => 'VND',
+            'nullDisplay' => '—',
+            'locale' => 'vi-VN',
+            'defaultTimeZone' => 'Asia/Ho_Chi_Minh',
+            'timeZone'        => 'Asia/Ho_Chi_Minh',
+          ],
 		'authManager' => [
 			'class' => 'yii\rbac\DbManager',
 		],
@@ -64,6 +70,7 @@ $config = [
             'enablePrettyUrl' => true,
             'showScriptName' => false,
             'rules' => [
+              'lich-hen' => 'my-khach-hang/appointments',
             ],
         ],
 
