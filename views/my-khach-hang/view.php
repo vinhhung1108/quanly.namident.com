@@ -200,6 +200,13 @@ CSS);
         ]) ?>
       </div>
       <div class="subtle">
+          <?= Html::a('Xem tất cả ảnh', '#', [
+              'id' => 'btn-all-images',
+              'class' => 'btn btn-link btn-xs',
+              'style' => 'padding:0;vertical-align:baseline',
+              'data-url' => \yii\helpers\Url::to(['my-khach-hang/all-images', 'id' => (int)$model->id]),
+          ]) ?>
+            &nbsp;·&nbsp;
         Tổng phí: <b><?= $fmtVnd($sumPhi) ?></b> ·
         Tạm thu: <b><?= $fmtVnd($sumTamThu) ?></b> ·
         Còn lại: <b><?= $fmtVnd($conLai) ?></b>
@@ -390,6 +397,16 @@ Modal::begin([
   'id' => 'dtViewModal',
   'header' => '<h4 class="modal-title">Chi tiết điều trị</h4>',
   'size' => Modal::SIZE_LARGE,
+  'options' => ['tabindex' => false],
+  'clientOptions' => ['backdrop' => 'static', 'keyboard' => true],
+]);
+echo '<div class="modal-body"><div class="text-center" style="padding:20px">Đang tải…</div></div>';
+Modal::end();
+
+Modal::begin([
+  'id' => 'khAllImgModal',
+  'header' => '<h4 class="modal-title">Tất cả ảnh</h4>',
+  'size' => Modal::SIZE_LARGE,   // script trong view sẽ tự đẩy lên modal-xl + 95vw
   'options' => ['tabindex' => false],
   'clientOptions' => ['backdrop' => 'static', 'keyboard' => true],
 ]);
@@ -921,4 +938,21 @@ $jsModalView = <<<JS
 })();
 JS;
 $this->registerJs($jsModalView);
+?>
+<?php
+$jsAll = <<<JS
+(function(){
+  var \$modal = $('#khAllImgModal');
+  $(document).on('click', '#btn-all-images', function(e){
+    e.preventDefault();
+    var url = $(this).data('url');
+    if(!url) return;
+    \$modal.find('.modal-body').html('<div class="text-center" style="padding:20px">Đang tải…</div>');
+    \$modal.modal('show').find('.modal-body').load(url, function(){
+      // tiêu đề set trong view all-images (kh-title-hidden) -> đã có script đặt hộ
+    });
+  });
+})();
+JS;
+$this->registerJs($jsAll);
 ?>

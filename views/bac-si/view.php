@@ -311,7 +311,7 @@ JS);
             'contentOptions'=>['style'=>'white-space:normal;max-width:520px'],
           ],
           [
-            'label'=>'Tạm thu (từng DV)',
+            'label'=>'Tạm thu',
             'format'=>'raw',
             'value'=> function($m) use ($model){
               $lines = [];

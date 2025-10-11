@@ -287,4 +287,22 @@ class MyKhachHangController extends Controller
         // Fallback đơn giản
         return number_format($n, 0, ',', '.');
     }
+
+    public function actionAllImages($id)
+    {
+        $kh = \app\models\MyKhachHang::findOne((int)$id);
+        if (!$kh) throw new \yii\web\NotFoundHttpException('Không tìm thấy KH.');
+
+        $rows = \app\models\MyDieuTri::find()
+            ->with('images')
+            ->where(['id_kh' => (int)$kh->id])
+            ->orderBy(['ngay_dieu_tri' => SORT_DESC, 'id' => SORT_DESC])
+            ->all();
+
+        return $this->renderAjax('all-images', [
+            'kh'   => $kh,
+            'rows' => $rows,
+        ]);
+    }
+
 }
