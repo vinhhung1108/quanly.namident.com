@@ -45,7 +45,7 @@ class MyKhachHangSearch extends MyKhachHang
             ->from('{{%dieu_tri}}')
             ->groupBy('id_kh');
 
-        // 2) Trong ngày gần nhất đó, chọn bản ghi có id lớn nhất
+        // 2) Trong ngày gần nhất đó, chọn bản ghi có id lớn nhất (tie-breaker)
         $subPick = (new Query())
             ->from(['dt2' => '{{%dieu_tri}}'])
             ->innerJoin(['md' => $subDate],
@@ -57,9 +57,9 @@ class MyKhachHangSearch extends MyKhachHang
             ->groupBy('dt2.id_kh');
 
         // 3) Join vào KH
-        $query->leftJoin(['md' => $subDate], 'md.id_kh = kh.id');                     // last_ngay_dieu_tri
-        $query->leftJoin(['pick' => $subPick], 'pick.id_kh = kh.id');                 // last_id
-        $query->leftJoin(['dt_item' => '{{%dieu_tri}}'], 'dt_item.id = pick.last_id'); // phi, tam_thu
+        $query->leftJoin(['md' => $subDate], 'md.id_kh = kh.id');                        // last_ngay_dieu_tri
+        $query->leftJoin(['pick' => $subPick], 'pick.id_kh = kh.id');                    // last_id trong ngày gần nhất
+        $query->leftJoin(['dt_item' => '{{%dieu_tri}}'], 'dt_item.id = pick.last_id');   // lấy phi, tam_thu của lần gần nhất
 
         // 4) Select
         $query->select([
@@ -89,16 +89,21 @@ class MyKhachHangSearch extends MyKhachHang
             ]
         );
 
+        // Tình trạng
         $dataProvider->sort->attributes['tinh_trang'] = [
             'asc'  => ['tinh_trang_sort' => SORT_ASC],
             'desc' => ['tinh_trang_sort' => SORT_DESC],
             'default' => SORT_ASC,
             'label' => 'Tình trạng',
         ];
+
+        // NGÀY ĐIỀU TRỊ GẦN NHẤT — tie-breaker = pick.last_id (đúng yêu cầu)
         $dataProvider->sort->attributes['last_ngay_dieu_tri'] = [
-            'asc'  => ['md.last_ngay_dieu_tri' => SORT_ASC,  'kh.id' => SORT_ASC],
-            'desc' => ['md.last_ngay_dieu_tri' => SORT_DESC, 'kh.id' => SORT_DESC],
+            'asc'  => ['md.last_ngay_dieu_tri' => SORT_ASC,  'pick.last_id' => SORT_ASC,  'kh.id' => SORT_ASC],
+            'desc' => ['md.last_ngay_dieu_tri' => SORT_DESC, 'pick.last_id' => SORT_DESC, 'kh.id' => SORT_DESC],
         ];
+
+        // Phí/Tạm thu của lần gần nhất
         $dataProvider->sort->attributes['last_phi'] = [
             'asc' => ['dt_item.phi' => SORT_ASC],
             'desc'=> ['dt_item.phi' => SORT_DESC],
@@ -128,12 +133,12 @@ class MyKhachHangSearch extends MyKhachHang
                 $sub = (new Query())
                     ->select(['kn.kh_id'])
                     ->from('{{%kh_nhom_map}} kn')
-                    ->where(['kn.nhom_id' => $ids])              // lọc theo các nhóm đã chọn
+                    ->where(['kn.nhom_id' => $ids])
                     ->groupBy('kn.kh_id')
                     ->having(new Expression('COUNT(DISTINCT kn.nhom_id) = :n', [
                         ':n' => count($ids)
-                    ]));                                         // phải đủ tất cả nhóm
-                $query->andWhere(['kh.id' => $sub]);             // kh.id IN (subquery)
+                    ]));
+                $query->andWhere(['kh.id' => $sub]);
             }
         }
 
@@ -187,7 +192,7 @@ class MyKhachHangSearch extends MyKhachHang
      * Thứ tự mặc định khi người dùng chưa bấm sort:
      * 1) KH chưa có ngày điều trị (NULL) lên trước
      * 2) Trong nhóm NULL: kh.id DESC
-     * 3) Còn lại: last_ngay_dieu_tri DESC, kh.id DESC
+     * 3) Còn lại: last_ngay_dieu_tri DESC, pick.last_id DESC (ai có lần mới hơn đứng trước), kh.id DESC
      */
     private function applyDefaultOrderIfNoUserSort($query, $params): void
     {
@@ -203,6 +208,7 @@ class MyKhachHangSearch extends MyKhachHang
                 CASE WHEN md.last_ngay_dieu_tri IS NULL THEN 0 ELSE 1 END ASC,
                 CASE WHEN md.last_ngay_dieu_tri IS NULL THEN kh.id END DESC,
                 md.last_ngay_dieu_tri DESC,
+                pick.last_id DESC,
                 kh.id DESC
             "));
         }
